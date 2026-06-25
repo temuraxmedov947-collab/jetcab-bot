@@ -10,7 +10,7 @@ logging.basicConfig(format="%(asctime)s - %(name)s - %(levelname)s - %(message)s
 logger = logging.getLogger(__name__)
 
 BOT_TOKEN = os.environ.get("BOT_TOKEN", "8544263942:AAFee5U8SagnKjuL6bTUcauZ_1RIRaEBE3o")
-CHANNEL_ID = int(os.environ.get("CHANNEL_ID", "-1004313465110"))
+CHANNEL_ID = int(os.environ.get("CHANNEL_ID", "-1003540659050"))
 
 NAME, SURNAME, PHONE = range(3)
 users = {}
