@@ -1,6 +1,6 @@
 import os
 import logging
-from telegram import Update, ReplyKeyboardMarkup, ReplyKeyboardRemove
+from telegram import Update, ReplyKeyboardRemove
 from telegram.ext import (
     Application, MessageHandler, CommandHandler,
     filters, ContextTypes, ConversationHandler
@@ -11,6 +11,7 @@ logger = logging.getLogger(__name__)
 
 BOT_TOKEN = os.environ.get("BOT_TOKEN", "8544263942:AAFee5U8SagnKjuL6bTUcauZ_1RIRaEBE3o")
 CHANNEL_ID = int(os.environ.get("CHANNEL_ID", "-1003540659050"))
+GROUP_ID = -1004313465110
 
 NAME, SURNAME, PHONE = range(3)
 users = {}
@@ -43,8 +44,7 @@ async def get_phone(update: Update, context: ContextTypes.DEFAULT_TYPE):
         'phone': context.user_data['phone'],
     }
     await update.message.reply_text(
-        f"✅ Ro'yxatdan o'tdingiz!\n\n"
-        f"Endi savolingizni yozing:"
+        "✅ Ro'yxatdan o'tdingiz!\n\nEndi savolingizni yozing:"
     )
     return ConversationHandler.END
 
@@ -68,13 +68,13 @@ async def handle_user_message(update: Update, context: ContextTypes.DEFAULT_TYPE
         f"🆔 ID: <code>{user.id}</code>\n"
         f"{'─' * 28}"
     )
-    await context.bot.send_message(chat_id=CHANNEL_ID, text=header, parse_mode="HTML")
-    forwarded = await msg.forward(chat_id=CHANNEL_ID)
+    await context.bot.send_message(chat_id=GROUP_ID, text=header, parse_mode="HTML")
+    forwarded = await msg.forward(chat_id=GROUP_ID)
     pending[forwarded.message_id] = user.id
 
 async def handle_admin_reply(update: Update, context: ContextTypes.DEFAULT_TYPE):
     msg = update.effective_message
-    if update.effective_chat.id != CHANNEL_ID:
+    if update.effective_chat.id != GROUP_ID:
         return
     if not msg.reply_to_message:
         return
@@ -84,7 +84,11 @@ async def handle_admin_reply(update: Update, context: ContextTypes.DEFAULT_TYPE)
         return
     try:
         if msg.text:
-            await context.bot.send_message(chat_id=user_id, text=f"💬 <b>Operator javobi:</b>\n\n{msg.text}", parse_mode="HTML")
+            await context.bot.send_message(
+                chat_id=user_id,
+                text=f"💬 <b>Operator javobi:</b>\n\n{msg.text}",
+                parse_mode="HTML"
+            )
         elif msg.photo:
             await context.bot.send_photo(chat_id=user_id, photo=msg.photo[-1].file_id, caption=msg.caption or "")
         elif msg.video:
@@ -96,23 +100,6 @@ async def handle_admin_reply(update: Update, context: ContextTypes.DEFAULT_TYPE)
         await msg.reply_text("✅ Javob mijozga yuborildi.")
     except Exception as e:
         await msg.reply_text(f"❌ Xatolik: {e}")
-
-async def handle_channel_post(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    msg = update.channel_post
-    if not msg or update.effective_chat.id != CHANNEL_ID:
-        return
-    for user_id in users:
-        try:
-            if msg.text:
-                await context.bot.send_message(chat_id=user_id, text=f"📢 <b>JetCab xabari:</b>\n\n{msg.text}", parse_mode="HTML")
-            elif msg.photo:
-                await context.bot.send_photo(chat_id=user_id, photo=msg.photo[-1].file_id, caption=msg.caption or "")
-            elif msg.video:
-                await context.bot.send_video(chat_id=user_id, video=msg.video.file_id, caption=msg.caption or "")
-            elif msg.document:
-                await context.bot.send_document(chat_id=user_id, document=msg.document.file_id, caption=msg.caption or "")
-        except Exception as e:
-            logger.error(f"Broadcast error to {user_id}: {e}")
 
 def main():
     app = Application.builder().token(BOT_TOKEN).build()
@@ -126,11 +113,13 @@ def main():
         fallbacks=[CommandHandler("start", start)],
     )
     app.add_handler(conv)
-    user_filter = filters.ChatType.PRIVATE & (filters.TEXT | filters.PHOTO | filters.VIDEO | filters.Document.ALL | filters.VOICE)
+    user_filter = filters.ChatType.PRIVATE & (
+        filters.TEXT | filters.PHOTO | filters.VIDEO |
+        filters.Document.ALL | filters.VOICE
+    )
     app.add_handler(MessageHandler(user_filter, handle_user_message))
-    admin_filter = filters.Chat(CHANNEL_ID) & filters.REPLY
+    admin_filter = filters.Chat(GROUP_ID) & filters.REPLY
     app.add_handler(MessageHandler(admin_filter, handle_admin_reply))
-    app.add_handler(MessageHandler(filters.Chat(CHANNEL_ID) & ~filters.REPLY, handle_channel_post))
     logger.info("JetCab bot ishga tushdi ✅")
     app.run_polling(drop_pending_updates=True)
 
